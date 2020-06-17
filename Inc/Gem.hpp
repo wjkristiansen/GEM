@@ -28,9 +28,6 @@ struct InterfaceId
 	constexpr operator UINT64() const { return Value; }
 };
 
-// Forward decl XGeneric
-struct XGeneric;
-
 //------------------------------------------------------------------------------------------------
 _Return_type_success_(return < 0x80000000)
 enum class Result : UINT32
@@ -262,6 +259,22 @@ inline void ThrowGemError(Result result)
 }
 
 //------------------------------------------------------------------------------------------------
+struct XGeneric
+{
+    GEM_INTERFACE_DECLARE(0xffffffffU);
+
+    GEMMETHOD_(ULONG, AddRef)() = 0;
+    GEMMETHOD_(ULONG, Release)() = 0;
+    GEMMETHOD(QueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) = 0;
+
+    template<class _XFace>
+    Gem::Result QueryInterface(_XFace **ppObj)
+    {
+        return QueryInterface(_XFace::IId, reinterpret_cast<void **>(ppObj));
+    }
+};
+
+//------------------------------------------------------------------------------------------------
 template<class _Base>
 class TGeneric : public _Base
 {
@@ -312,7 +325,7 @@ public:
 
     GEMMETHOD(InternalQueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) final
     {
-        if (XGeneric::IId == iid)
+        if (Gem::XGeneric::IId == iid)
         {
             *ppObj = reinterpret_cast<XGeneric *>(this);
             AddRef();
@@ -377,20 +390,4 @@ public:
         m_pOuterGeneric(pOuterGeneric) {}
 };
     
-//------------------------------------------------------------------------------------------------
-struct XGeneric
-{
-    GEM_INTERFACE_DECLARE(0xffffffffU);
-
-    GEMMETHOD_(ULONG, AddRef)() = 0;
-    GEMMETHOD_(ULONG, Release)() = 0;
-    GEMMETHOD(QueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) = 0;
-
-    template<class _XFace>
-    Gem::Result QueryInterface(_XFace **ppObj)
-    {
-        return QueryInterface(_XFace::IId, reinterpret_cast<void **>(ppObj));
-    }
-};
-
 }
