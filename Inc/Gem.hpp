@@ -15,6 +15,22 @@
 #define GEM_IID_PPV_ARGS(ppObj) \
     std::remove_reference_t<decltype(**ppObj)>::IId, reinterpret_cast<void **>(ppObj)
 
+#define BEGIN_GEM_INTERFACE_MAP(SuperClass) \
+    GEMMETHOD(InternalQueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) { \
+    switch(iid) { \
+    default: \
+        return SuperClass::InternalQueryInterface(iid, ppObj); \
+
+#define GEM_INTERFACE_ENTRY(IFace) \
+    case IFace::IId: \
+        *ppObj = this; \
+        this->AddRef(); \
+        break;
+
+#define END_GEM_INTERFACE_MAP() \
+    } \
+    return Gem::Result::Success; }
+
 namespace Gem
 {
 struct InterfaceId
