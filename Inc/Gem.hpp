@@ -6,9 +6,9 @@
 
 #define GEMAPI __stdcall
 #define GEMNOTHROW __declspec(nothrow)
-#define GEMMETHOD(method) virtual GEMNOTHROW Gem::Result GEMAPI method
+#define GEMMETHOD(method) _Success_(return < 0x80000000UL) virtual GEMNOTHROW Gem::Result GEMAPI method
 #define GEMMETHOD_(retType, method) virtual GEMNOTHROW retType GEMAPI method
-#define GEMMETHODIMP Gem::Result
+#define GEMMETHODIMP _Success_(return < 0x80000000UL) Gem::Result
 #define GEMMETHODIMP_(retType) retType
 #define GEM_INTERFACE_DECLARE(iid) static constexpr Gem::InterfaceId IId{iid}
 
