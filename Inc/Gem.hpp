@@ -151,6 +151,18 @@ public:
         }
     }
 
+    TGemPtr &Attach(_Type *p)
+    {
+        if (m_p)
+        {
+            m_p->Release();
+        }
+
+        m_p = p;
+
+        return *this;
+    }
+
     _Type *Detach()
     {
         _Type *pOut = m_p;
