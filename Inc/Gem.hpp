@@ -46,7 +46,7 @@ enum class Result : UINT32
 };
 
 //------------------------------------------------------------------------------------------------
-inline PCSTR ResultToString(Result res)
+inline PCSTR GemResultString(Result res)
 {
     switch (res)
     {
@@ -78,7 +78,7 @@ inline PCSTR ResultToString(Result res)
 
 
 //------------------------------------------------------------------------------------------------
-inline Result HResultToResult(HRESULT hr)
+inline Result GemResult(HRESULT hr)
 {
     switch (hr)
     {
