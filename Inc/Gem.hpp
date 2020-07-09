@@ -15,21 +15,33 @@
 #define GEM_IID_PPV_ARGS(ppObj) \
     std::remove_reference_t<decltype(**ppObj)>::IId, reinterpret_cast<void **>(ppObj)
 
+#define BEGIN_GEM_INTERFACE_MAP0() \
+    GEMMETHOD(InternalQueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) { \
+    *ppObj = nullptr; \
+    switch(iid) { \
+    default: \
+        return Result::NoInterface; \
+
 #define BEGIN_GEM_INTERFACE_MAP(SuperClass) \
     GEMMETHOD(InternalQueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) { \
+    *ppObj = nullptr; \
     switch(iid) { \
     default: \
         return SuperClass::InternalQueryInterface(iid, ppObj); \
 
 #define GEM_INTERFACE_ENTRY(IFace) \
     case IFace::IId: \
-        *ppObj = this; \
+        *ppObj = reinterpret_cast<IFace *>(this); \
         this->AddRef(); \
-        break;
+        break; \
+
+#define GEM_CONTAINED_INTERFACE_ENTRY(IFace, member) \
+    case IFace::IId: \
+        return member.InternalQueryInterface(iid, ppObj); \
 
 #define END_GEM_INTERFACE_MAP() \
     } \
-    return Gem::Result::Success; }
+    return Gem::Result::Success; } \
 
 namespace Gem
 {
