@@ -6,9 +6,9 @@
 
 #define GEMAPI __stdcall
 #define GEMNOTHROW __declspec(nothrow)
-#define GEMMETHOD(method) _Success_(return < 0x80000000UL) virtual GEMNOTHROW Gem::Result GEMAPI method
+#define GEMMETHOD(method) virtual GEMNOTHROW Gem::Result GEMAPI method
 #define GEMMETHOD_(retType, method) virtual GEMNOTHROW retType GEMAPI method
-#define GEMMETHODIMP _Success_(return < 0x80000000UL) Gem::Result
+#define GEMMETHODIMP Gem::Result
 #define GEMMETHODIMP_(retType) retType
 #define GEM_INTERFACE_DECLARE(iid) static constexpr Gem::InterfaceId IId{iid}
 
@@ -57,20 +57,20 @@ struct InterfaceId
 };
 
 //------------------------------------------------------------------------------------------------
-_Return_type_success_(return < 0x80000000)
-enum class Result : UINT32
+_Return_type_success_(return >= 0)
+    enum class Result : INT32
 {
     Success = 0,
     End = 1,
-    Fail = 0x80000000, // Must be first failure
-    InvalidArg,
-    NotFound,
-    OutOfMemory,
-    NoInterface,
-    BadPointer,
-    NotImplemented,
-    Unavailable,
-    Uninitialized,
+    Fail = -1, // Must be first failure
+    InvalidArg = -2,
+    NotFound = -3,
+    OutOfMemory = -4,
+    NoInterface = -5,
+    BadPointer = -6,
+    NotImplemented = -7,
+    Unavailable = -8,
+    Uninitialized = -9,
 };
 
 //------------------------------------------------------------------------------------------------
@@ -272,19 +272,19 @@ public:
 };
 
 //------------------------------------------------------------------------------------------------
-inline bool Failed(Gem::Result result)
+inline constexpr bool Failed(Gem::Result result) noexcept
 {
-    return result >= Gem::Result::Fail;
+    return result < Gem::Result::Success;
 }
 
 //------------------------------------------------------------------------------------------------
 class GemError
 {
-    Result m_result;
+    const Result m_result;
 public:
-    operator GemError() = delete;
+    GemError() = delete;
     GemError(Result result) :
-        m_result(result) {}
+        m_result(result >= Result::Success ? Result::Fail : result) {}
 
     Result Result() const { return m_result; }
 };
