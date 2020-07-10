@@ -16,14 +16,14 @@
     std::remove_reference_t<decltype(**ppObj)>::IId, reinterpret_cast<void **>(ppObj)
 
 #define BEGIN_GEM_INTERFACE_MAP0() \
-    GEMMETHOD(InternalQueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) { \
+    GEMMETHOD(InternalQueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) { \
     *ppObj = nullptr; \
     switch(iid) { \
     default: \
         return Result::NoInterface; \
 
 #define BEGIN_GEM_INTERFACE_MAP(SuperClass) \
-    GEMMETHOD(InternalQueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) { \
+    GEMMETHOD(InternalQueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) { \
     *ppObj = nullptr; \
     switch(iid) { \
     default: \
