@@ -138,7 +138,7 @@ inline Result GemResult(HRESULT hr)
 //------------------------------------------------------------------------------------------------
 inline bool Succeeded(Result result)
 {
-    return result < Result::Fail;
+    return result >= Result::Success;
 }
 
 //------------------------------------------------------------------------------------------------
