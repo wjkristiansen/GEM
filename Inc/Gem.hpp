@@ -22,25 +22,29 @@
     default: \
         return Result::NoInterface; \
 
-#define BEGIN_GEM_INTERFACE_MAP(SuperClass) \
+#define BEGIN_GEM_INTERFACE_MAP() \
     GEMMETHOD(InternalQueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) { \
     *ppObj = nullptr; \
     switch(iid) { \
     default: \
-        return SuperClass::InternalQueryInterface(iid, ppObj); \
+        return Result::NoInterface; \
+    case XGeneric::IId: \
+        *ppObj = reinterpret_cast<XGeneric *>(this); \
+        break; \
 
 #define GEM_INTERFACE_ENTRY(IFace) \
     case IFace::IId: \
         *ppObj = reinterpret_cast<IFace *>(this); \
-        this->AddRef(); \
         break; \
 
 #define GEM_CONTAINED_INTERFACE_ENTRY(IFace, member) \
     case IFace::IId: \
-        return member.InternalQueryInterface(iid, ppObj); \
+        *ppObj = &member; \
+        break;
 
 #define END_GEM_INTERFACE_MAP() \
     } \
+    AddRef(); \
     return Gem::Result::Success; } \
 
 namespace Gem
@@ -358,18 +362,6 @@ public:
         if (!ppObj)
         {
             return Result::BadPointer;
-        }
-
-        return InternalQueryInterface(iid, ppObj);
-    }
-
-    GEMMETHOD(InternalQueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) final
-    {
-        if (Gem::XGeneric::IId == iid)
-        {
-            *ppObj = reinterpret_cast<XGeneric *>(this);
-            AddRef();
-            return Result::Success;
         }
 
         return _Base::InternalQueryInterface(iid, ppObj);
