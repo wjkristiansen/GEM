@@ -20,14 +20,14 @@
     *ppObj = nullptr; \
     switch(iid) { \
     default: \
-        return Result::NoInterface; \
+        return Gem::Result::NoInterface; \
 
 #define BEGIN_GEM_INTERFACE_MAP() \
     GEMMETHOD(InternalQueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) { \
     *ppObj = nullptr; \
     switch(iid) { \
     default: \
-        return Result::NoInterface; \
+        return Gem::Result::NoInterface; \
     case XGeneric::IId: \
         *ppObj = reinterpret_cast<XGeneric *>(this); \
         break; \
@@ -62,7 +62,7 @@ struct InterfaceId
 
 //------------------------------------------------------------------------------------------------
 _Return_type_success_(return >= 0)
-    enum class Result : INT32
+enum class Result : INT32
 {
     Success = 0,
     End = 1,
@@ -82,27 +82,27 @@ inline PCSTR GemResultString(Result res)
 {
     switch (res)
     {
-    case Result::Success:
+    case Gem::Result::Success:
         return "Success";
-    case Result::End:
+    case Gem::Result::End:
         return "End";
-    case Result::Fail:
+    case Gem::Result::Fail:
         return "Fail";
-    case Result::InvalidArg:
+    case Gem::Result::InvalidArg:
         return "IncalidArg";
-    case Result::NotFound:
+    case Gem::Result::NotFound:
         return "NotFound";
-    case Result::OutOfMemory:
+    case Gem::Result::OutOfMemory:
         return "OutOfMemory";
-    case Result::NoInterface:
+    case Gem::Result::NoInterface:
         return "NoInterface";
-    case Result::BadPointer:
+    case Gem::Result::BadPointer:
         return "BadPointer";
-    case Result::NotImplemented:
+    case Gem::Result::NotImplemented:
         return "NotImplemented";
-    case Result::Unavailable:
+    case Gem::Result::Unavailable:
         return "Unavailable";
-    case Result::Uninitialized:
+    case Gem::Result::Uninitialized:
         return "Uninitialized";
     }
     return "(Unknown)";
@@ -110,39 +110,39 @@ inline PCSTR GemResultString(Result res)
 
 
 //------------------------------------------------------------------------------------------------
-inline Result GemResult(HRESULT hr)
+inline Gem::Result GemResult(HRESULT hr)
 {
     switch (hr)
     {
     case S_OK:
-        return Result::Success;
+        return Gem::Result::Success;
 
     case E_FAIL:
-        return Result::Fail;
+        return Gem::Result::Fail;
 
     case E_OUTOFMEMORY:
-        return Result::OutOfMemory;
+        return Gem::Result::OutOfMemory;
 
     case E_INVALIDARG:
     case DXGI_ERROR_INVALID_CALL:
-        return Result::InvalidArg;
+        return Gem::Result::InvalidArg;
 
     case DXGI_ERROR_DEVICE_REMOVED:
         // BUGBUG: TODO...
-        return Result::Fail;
+        return Gem::Result::Fail;
 
     case E_NOINTERFACE:
-        return Result::NoInterface;
+        return Gem::Result::NoInterface;
 
     default:
-        return Result::Fail;
+        return Gem::Result::Fail;
     }
 }
 
 //------------------------------------------------------------------------------------------------
 inline bool Succeeded(Result result)
 {
-    return result >= Result::Success;
+    return result >= Gem::Result::Success;
 }
 
 //------------------------------------------------------------------------------------------------
@@ -288,7 +288,7 @@ class GemError
 public:
     GemError() = delete;
     GemError(Result result) :
-        m_result(result >= Result::Success ? Result::Fail : result) {}
+        m_result(result >= Gem::Result::Success ? Gem::Result::Fail : result) {}
 
     Result Result() const { return m_result; }
 };
@@ -309,7 +309,7 @@ struct XGeneric
 
     GEMMETHOD_(ULONG, AddRef)() = 0;
     GEMMETHOD_(ULONG, Release)() = 0;
-    GEMMETHOD(QueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) = 0;
+    GEMMETHOD(QueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) = 0;
 
     template<class _XFace>
     Gem::Result QueryInterface(_XFace **ppObj)
@@ -357,11 +357,11 @@ public:
         return result;
     }
 
-    GEMMETHOD(QueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) final
+    GEMMETHOD(QueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) final
     {
         if (!ppObj)
         {
-            return Result::BadPointer;
+            return Gem::Result::BadPointer;
         }
 
         return _Base::InternalQueryInterface(iid, ppObj);
@@ -393,7 +393,7 @@ public:
     }
 
     // Delegate Query interface to outer generic
-    GEMMETHOD(QueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) final
+    GEMMETHOD(QueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) final
     {
         return _Base::m_pOuterGeneric->QueryInterface(iid, ppObj);
     }
@@ -405,10 +405,10 @@ class CGenericBase
 {
 public:
     virtual ~CGenericBase() = default;
-    GEMMETHOD(InternalQueryInterface)(InterfaceId iid, _Outptr_result_nullonfailure_ void **ppUnk)
+    GEMMETHOD(InternalQueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppUnk)
     {
         *ppUnk = nullptr;
-        return Result::NoInterface;
+        return Gem::Result::NoInterface;
     }
 };
 
