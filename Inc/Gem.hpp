@@ -28,8 +28,8 @@
     switch(iid) { \
     default: \
         return Gem::Result::NoInterface; \
-    case XGeneric::IId: \
-        *ppObj = reinterpret_cast<XGeneric *>(this); \
+    case Gem::XGeneric::IId: \
+        *ppObj = reinterpret_cast<Gem::XGeneric *>(this); \
         break; \
 
 #define GEM_INTERFACE_ENTRY(IFace) \
@@ -53,12 +53,16 @@ struct InterfaceId
 {
 	const UINT64 Value;
 	InterfaceId() = default;
-	InterfaceId(const InterfaceId& o) = default;
+	constexpr InterfaceId(const InterfaceId& o) = default;
 	constexpr InterfaceId(UINT64 i) :
 		Value(i) {}
-	bool operator==(const InterfaceId& o) const { return Value == o.Value; }
+	constexpr bool operator==(const InterfaceId& o) const { return Value == o.Value; }
+	constexpr bool operator==(UINT64 v) const { return Value == v; }
 	constexpr operator UINT64() const { return Value; }
 };
+
+//------------------------------------------------------------------------------------------------
+#define GEM_INTERFACE_DECLARE(id) static constexpr Gem::InterfaceId IId{id}
 
 //------------------------------------------------------------------------------------------------
 _Return_type_success_(return >= 0)
@@ -305,7 +309,7 @@ inline void ThrowGemError(Result result)
 //------------------------------------------------------------------------------------------------
 struct XGeneric
 {
-    GEM_INTERFACE_DECLARE(0xffffffffU);
+    GEM_INTERFACE_DECLARE(0xffffffffffffffffU);
 
     GEMMETHOD_(ULONG, AddRef)() = 0;
     GEMMETHOD_(ULONG, Release)() = 0;
@@ -369,33 +373,36 @@ public:
 };
 
 //------------------------------------------------------------------------------------------------
-template<class _Base>
+template<class _Base, class _OuterGeneric>
 class TInnerGeneric :
     public _Base
 {
+    _OuterGeneric *m_pOuterGeneric;
+
 public:
     template<typename... Arguments>
-    TInnerGeneric(_In_ XGeneric *pOuterGeneric, Arguments... params) :
-        _Base(pOuterGeneric, params...)
+    TInnerGeneric(_In_ _OuterGeneric *pOuterGeneric, Arguments... params) :
+        m_pOuterGeneric(pOuterGeneric),
+        _Base(params...)
     {
     }
 
     // Delegate AddRef to outer generic
     GEMMETHOD_(ULONG,AddRef)() final
     {
-        return _Base::m_pOuterGeneric->AddRef();
+        return m_pOuterGeneric->AddRef();
     }
 
     // Delegate Release to outer generic
     GEMMETHOD_(ULONG, Release)() final
     {
-        return _Base::m_pOuterGeneric->Release();
+        return m_pOuterGeneric->Release();
     }
 
     // Delegate Query interface to outer generic
     GEMMETHOD(QueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) final
     {
-        return _Base::m_pOuterGeneric->QueryInterface(iid, ppObj);
+        return m_pOuterGeneric->QueryInterface(iid, ppObj);
     }
 };
 
@@ -412,14 +419,4 @@ public:
     }
 };
 
-//------------------------------------------------------------------------------------------------
-class CInnerGenericBase :
-    public CGenericBase
-{
-public:
-    XGeneric *m_pOuterGeneric = nullptr; // weak pointer
-    CInnerGenericBase(XGeneric *pOuterGeneric) :
-        m_pOuterGeneric(pOuterGeneric) {}
-};
-    
 }
