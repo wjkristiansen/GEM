@@ -1,47 +1,80 @@
 //================================================================================================
-// Generic
+// Generic Interface Manager (GEM) - Portable COM-like Interface System
+//
+// This header provides a portable, cross-platform interface system inspired by COM:
+// - Reference counting through AddRef/Release
+// - Interface querying through QueryInterface  
+// - Smart pointer support via TGemPtr
+// - Interface aggregation support
+// - Custom result codes for error handling
+//
+// Key design goals:
+// - Cross-platform portability (no Windows-specific dependencies)
+// - COM-like semantics and patterns for familiarity
+// - Uses 64-bit interface IDs instead of GUIDs for simplicity
+// - Custom Result enum instead of HRESULT for platform independence
+// - Modern C++ conveniences while maintaining interface-based design
 //================================================================================================
 
 #pragma once
 
-#define GEMAPI __stdcall
-#define GEMNOTHROW __declspec(nothrow)
+#ifdef _WIN32
+    #define GEMAPI __stdcall
+    #define GEMNOTHROW __declspec(nothrow)
+#else
+    #define GEMAPI
+    #define GEMNOTHROW
+#endif
+
+// Method declaration macros for COM-style interfaces
 #define GEMMETHOD(method) virtual GEMNOTHROW Gem::Result GEMAPI method
 #define GEMMETHOD_(retType, method) virtual GEMNOTHROW retType GEMAPI method
+
+// Implementation macros for concrete classes
 #define GEMMETHODIMP Gem::Result
 #define GEMMETHODIMP_(retType) retType
+
+// Interface ID declaration macro
 #define GEM_INTERFACE_DECLARE(iid) static constexpr Gem::InterfaceId IId{iid}
 
+// Helper macro for QueryInterface calls with type safety
 #define GEM_IID_PPV_ARGS(ppObj) \
     std::remove_reference_t<decltype(**ppObj)>::IId, reinterpret_cast<void **>(ppObj)
 
-#define BEGIN_GEM_INTERFACE_MAP0() \
-    GEMMETHOD(InternalQueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) { \
-    *ppObj = nullptr; \
-    switch(iid) { \
-    default: \
-        return Gem::Result::NoInterface; \
-
+// Use BEGIN_GEM_INTERFACE_MAP() for classes that implement XGeneric
 #define BEGIN_GEM_INTERFACE_MAP() \
     GEMMETHOD(InternalQueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) { \
+    if (!ppObj) { \
+        return Gem::Result::BadPointer; \
+    } \
     *ppObj = nullptr; \
     switch(iid) { \
     default: \
         return Gem::Result::NoInterface; \
     case Gem::XGeneric::IId: \
-        *ppObj = reinterpret_cast<Gem::XGeneric *>(this); \
+        *ppObj = static_cast<Gem::XGeneric *>(this); \
         break; \
 
+// Add an interface entry to the interface map
 #define GEM_INTERFACE_ENTRY(IFace) \
     case IFace::IId: \
-        *ppObj = reinterpret_cast<IFace *>(this); \
+        *ppObj = static_cast<IFace *>(this); \
         break; \
 
-#define GEM_CONTAINED_INTERFACE_ENTRY(IFace, member) \
+// Add an aggregated interface entry to the interface map
+// The aggregated object must delegate AddRef/Release to this outer object.
+// This can be accomplished using TAggregateGeneric in inheretance chain.
+// This macro returns the aggregated interface pointer and the outer object's
+#define GEM_INTERFACE_ENTRY_AGGREGATE(IFace, pObj) \
     case IFace::IId: \
-        *ppObj = &member; \
+        if (pObj) { \
+            *ppObj = pObj; \
+        } else { \
+            return Gem::Result::BadPointer; \
+        } \
         break;
 
+// Complete the interface map
 #define END_GEM_INTERFACE_MAP() \
     } \
     AddRef(); \
@@ -49,6 +82,8 @@
 
 namespace Gem
 {
+//------------------------------------------------------------------------------------------------
+// 64-bit interface identifier
 struct InterfaceId
 {
 	const UINT64 Value;
@@ -60,9 +95,6 @@ struct InterfaceId
 	constexpr bool operator==(UINT64 v) const { return Value == v; }
 	constexpr operator UINT64() const { return Value; }
 };
-
-//------------------------------------------------------------------------------------------------
-#define GEM_INTERFACE_DECLARE(id) static constexpr Gem::InterfaceId IId{id}
 
 //------------------------------------------------------------------------------------------------
 _Return_type_success_(return >= 0)
@@ -307,6 +339,7 @@ inline void ThrowGemError(Result result)
 }
 
 //------------------------------------------------------------------------------------------------
+// Base interface for all GEM interfaces
 struct XGeneric
 {
     GEM_INTERFACE_DECLARE(0xffffffffffffffffU);
@@ -346,12 +379,20 @@ public:
 
     ULONG GEMNOTHROW GEMAPI InternalAddRef()
     {
+#ifdef _WIN32
         return InterlockedIncrement(&m_RefCount);
+#else
+        return ++m_RefCount;  // Note: This is not thread-safe on non-Windows. Consider using std::atomic for true portability.
+#endif
     }
 
     ULONG GEMNOTHROW GEMAPI InternalRelease()
     {
+#ifdef _WIN32
         auto result = InterlockedDecrement(&m_RefCount);
+#else
+        auto result = --m_RefCount;  // Note: This is not thread-safe on non-Windows. Consider using std::atomic for true portability.
+#endif
 
         if (0UL == result)
         {
@@ -373,37 +414,46 @@ public:
 };
 
 //------------------------------------------------------------------------------------------------
+// Aggregated object for COM-like aggregation
+// The aggregated object delegates its XGeneric methods to the outer object but
+// implements its own interface-specific methods and QueryInterface logic
 template<class _Base, class _OuterGeneric>
-class TInnerGeneric :
+class TAggregateGeneric :
     public _Base
 {
     _OuterGeneric *m_pOuterGeneric;
 
 public:
     template<typename... Arguments>
-    TInnerGeneric(_In_ _OuterGeneric *pOuterGeneric, Arguments... params) :
+    TAggregateGeneric(_In_ _OuterGeneric *pOuterGeneric, Arguments... params) :
         m_pOuterGeneric(pOuterGeneric),
         _Base(params...)
     {
     }
 
-    // Delegate AddRef to outer generic
+    // Always delegate AddRef to outer generic for proper aggregation
     GEMMETHOD_(ULONG,AddRef)() final
     {
         return m_pOuterGeneric->AddRef();
     }
 
-    // Delegate Release to outer generic
+    // Always delegate Release to outer generic for proper aggregation
     GEMMETHOD_(ULONG, Release)() final
     {
         return m_pOuterGeneric->Release();
     }
-
-    // Delegate Query interface to outer generic
+    // Delegate ALL QueryInterface calls to outer object for proper COM aggregation identity
     GEMMETHOD(QueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) final
     {
+        if (!ppObj)
+        {
+            return Gem::Result::BadPointer;
+        }
+
+        // Always delegate to outer object - it knows about both outer and inner interfaces
         return m_pOuterGeneric->QueryInterface(iid, ppObj);
     }
+
 };
 
 //------------------------------------------------------------------------------------------------
