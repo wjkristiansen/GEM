@@ -349,8 +349,8 @@ struct XGeneric
     GEMMETHOD(QueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) = 0;
 
     // Lifecycle methods for proper two-phase initialization/destruction
-    GEMMETHOD(Initialize)() = 0;   // Called after construction is complete
-    GEMMETHOD(Uninitialize)() = 0; // Called before destruction begins
+    GEMMETHOD(Initialize)() = 0;        // Called after construction is complete
+    GEMMETHOD_(void, Uninitialize)() = 0; // Called before destruction begins
 
     template<class _XFace>
     Gem::Result QueryInterface(_XFace **ppObj)
@@ -456,10 +456,9 @@ public:
         return Gem::Result::Success;
     }
 
-    GEMMETHOD(Uninitialize)() override
+    GEMMETHOD_(void, Uninitialize)() override
     {
         // Default implementation - derived classes can override for custom cleanup
-        return Gem::Result::Success;
     }
 };
 
@@ -543,11 +542,10 @@ public:
         return Gem::Result::Success;
     }
 
-    GEMMETHOD(Uninitialize)() final
+    GEMMETHOD_(void, Uninitialize)() final
     {
         // Aggregated objects should not prepare for destruction independently
         // The outer object will manage this
-        return Gem::Result::Success;
     }
 
 };
