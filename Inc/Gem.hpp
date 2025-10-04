@@ -65,7 +65,7 @@
 
 // Add an aggregated interface entry to the interface map
 // The aggregated object must delegate AddRef/Release to this outer object.
-// This can be accomplished using TAggregateGeneric in inheretance chain.
+// This can be accomplished using TAggregateImpl in inheretance chain.
 // This macro returns the aggregated interface pointer and the outer object's
 #define GEM_INTERFACE_ENTRY_AGGREGATE(IFace, pObj) \
     case IFace::IId: \
@@ -363,13 +363,13 @@ struct XGeneric
 
 //------------------------------------------------------------------------------------------------
 template<class _Base>
-class TGeneric : public _Base
+class TGenericImpl : public _Base
 {
     ULONG m_RefCount = 0;
 
 public:
     template<typename... Arguments>
-    TGeneric(Arguments&&... args) : _Base(args ...)
+    TGenericImpl(Arguments&&... args) : _Base(args ...)
     {
     }
 
@@ -385,7 +385,7 @@ public:
         try
         {
             // Phase 1: Construction
-            TGemPtr<_Base> obj = new TGeneric<_Base>(args...); // throw std::bad_alloc
+            TGemPtr<_Base> obj = new TGenericImpl<_Base>(args...); // throw std::bad_alloc
             
             // Phase 2: Finalization (safe to create aggregates, etc.)
             ThrowGemError(obj->Initialize()); // throw GemError
@@ -432,7 +432,7 @@ public:
 
         if (0UL == result)
         {
-            // Call lifecycle method before destruction - _Base must inherit from TGenericBase
+            // Call lifecycle method before destruction - _Base must inherit from TGeneric
             this->Uninitialize();
             delete(this);
         }
@@ -456,14 +456,14 @@ public:
 // The aggregated object delegates its XGeneric methods to the outer object but
 // implements its own interface-specific methods and QueryInterface logic
 template<class _Base, class _OuterGeneric>
-class TAggregateGeneric :
+class TAggregateImpl :
     public _Base
 {
     _OuterGeneric *m_pOuterGeneric;
 
 public:
     template<typename... Arguments>
-    TAggregateGeneric(_In_ _OuterGeneric *pOuterGeneric, Arguments... params) :
+    TAggregateImpl(_In_ _OuterGeneric *pOuterGeneric, Arguments... params) :
         m_pOuterGeneric(pOuterGeneric),
         _Base(params...)
     {
@@ -481,7 +481,7 @@ public:
         try
         {
             // Phase 1: Construction - aggregate gets outer object pointer
-            TGemPtr<_Base> obj = new TAggregateGeneric<_Base, _OuterGeneric>(pOuter, args...); // throw std::bad_alloc
+            TGemPtr<_Base> obj = new TAggregateImpl<_Base, _OuterGeneric>(pOuter, args...); // throw std::bad_alloc
             
             // Phase 2: Finalization (safe for any additional initialization)
             ThrowGemError(obj->Initialize()); // throw GemError
@@ -524,12 +524,12 @@ public:
 };
 
 //------------------------------------------------------------------------------------------------
-// Custom interfaces must derive from TGenericBase<_Xface>
+// Custom interfaces must derive from TGeneric<_Xface>
 template<class _Xface>
-class TGenericBase : public _Xface
+class TGeneric : public _Xface
 {
 public:
-    virtual ~TGenericBase() = default;
+    virtual ~TGeneric() = default;
     GEMMETHOD(InternalQueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppUnk)
     {
         *ppUnk = nullptr;
