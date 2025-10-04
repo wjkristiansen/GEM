@@ -348,6 +348,10 @@ struct XGeneric
     GEMMETHOD_(ULONG, Release)() = 0;
     GEMMETHOD(QueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) = 0;
 
+    // Lifecycle methods for proper two-phase initialization/destruction
+    GEMMETHOD(Initialize)() = 0;   // Called after construction is complete
+    GEMMETHOD(Uninitialize)() = 0; // Called before destruction begins
+
     template<class _XFace>
     Gem::Result QueryInterface(_XFace **ppObj)
     {
@@ -365,6 +369,37 @@ public:
     template<typename... Arguments>
     TGeneric(Arguments&&... args) : _Base(args ...)
     {
+    }
+
+    // Factory function for proper two-phase initialization
+    template<typename... Args>
+    static Result Create(_Outptr_result_nullonfailure_ _Base **ppObject, Args... args)
+    {
+        if (!ppObject)
+            return Result::BadPointer;
+        
+        *ppObject = nullptr;
+        
+        try
+        {
+            // Phase 1: Construction
+            auto obj = new TGeneric<_Base>(args...);
+            
+            // Phase 2: Finalization (safe to create aggregates, etc.)
+            auto result = obj->Initialize();
+            if (Failed(result))
+            {
+                obj->Release();
+                return result;
+            }
+            
+            *ppObject = obj;
+            return Result::Success;
+        }
+        catch (...)
+        {
+            return Result::OutOfMemory;
+        }
     }
 
     GEMMETHOD_(ULONG,AddRef)() final
@@ -396,6 +431,8 @@ public:
 
         if (0UL == result)
         {
+            // Call lifecycle method before destruction
+            Uninitialize();
             delete(this);
         }
 
@@ -410,6 +447,19 @@ public:
         }
 
         return _Base::InternalQueryInterface(iid, ppObj);
+    }
+
+    // Default lifecycle method implementations
+    GEMMETHOD(Initialize)() override
+    {
+        // Default implementation - derived classes can override for custom finalization
+        return Gem::Result::Success;
+    }
+
+    GEMMETHOD(Uninitialize)() override
+    {
+        // Default implementation - derived classes can override for custom cleanup
+        return Gem::Result::Success;
     }
 };
 
@@ -429,6 +479,37 @@ public:
         m_pOuterGeneric(pOuterGeneric),
         _Base(params...)
     {
+    }
+
+    // Factory function for proper two-phase initialization of aggregated objects
+    template<typename... Args>
+    static Result Create(_Outptr_result_nullonfailure_ _Base **ppObject, _In_ _OuterGeneric *pOuter, Args... args)
+    {
+        if (!ppObject || !pOuter)
+            return Result::BadPointer;
+        
+        *ppObject = nullptr;
+        
+        try
+        {
+            // Phase 1: Construction - aggregate gets outer object pointer
+            auto obj = new TAggregateGeneric<_Base, _OuterGeneric>(pOuter, args...);
+            
+            // Phase 2: Finalization (safe for any additional initialization)
+            auto result = obj->Initialize();
+            if (Failed(result))
+            {
+                obj->Release();
+                return result;
+            }
+            
+            *ppObject = obj;
+            return Result::Success;
+        }
+        catch (...)
+        {
+            return Result::OutOfMemory;
+        }
     }
 
     // Always delegate AddRef to outer generic for proper aggregation
@@ -452,6 +533,21 @@ public:
 
         // Always delegate to outer object - it knows about both outer and inner interfaces
         return m_pOuterGeneric->QueryInterface(iid, ppObj);
+    }
+
+    // Delegate lifecycle methods to outer object
+    GEMMETHOD(Initialize)() final
+    {
+        // Aggregated objects should not finalize independently
+        // Let the outer object control finalization
+        return Gem::Result::Success;
+    }
+
+    GEMMETHOD(Uninitialize)() final
+    {
+        // Aggregated objects should not prepare for destruction independently
+        // The outer object will manage this
+        return Gem::Result::Success;
     }
 
 };
