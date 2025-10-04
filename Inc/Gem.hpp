@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <new>
+
 #ifdef _WIN32
     #define GEMAPI __stdcall
     #define GEMNOTHROW __declspec(nothrow)
@@ -383,22 +385,21 @@ public:
         try
         {
             // Phase 1: Construction
-            auto obj = new TGeneric<_Base>(args...);
+            TGemPtr<_Base> obj = new TGeneric<_Base>(args...); // throw std::bad_alloc
             
             // Phase 2: Finalization (safe to create aggregates, etc.)
-            auto result = obj->Initialize();
-            if (Failed(result))
-            {
-                obj->Release();
-                return result;
-            }
+            ThrowGemError(obj->Initialize()); // throw GemError
             
-            *ppObject = obj;
+            *ppObject = obj.Detach();
             return Result::Success;
         }
-        catch (...)
+        catch (const std::bad_alloc &)
         {
             return Result::OutOfMemory;
+        }
+        catch (const GemError &e)
+        {
+            return e.Result();
         }
     }
 
@@ -431,8 +432,8 @@ public:
 
         if (0UL == result)
         {
-            // Call lifecycle method before destruction
-            Uninitialize();
+            // Call lifecycle method before destruction - _Base must inherit from TGenericBase
+            this->Uninitialize();
             delete(this);
         }
 
@@ -447,18 +448,6 @@ public:
         }
 
         return _Base::InternalQueryInterface(iid, ppObj);
-    }
-
-    // Default lifecycle method implementations
-    GEMMETHOD(Initialize)() override
-    {
-        // Default implementation - derived classes can override for custom finalization
-        return Gem::Result::Success;
-    }
-
-    GEMMETHOD_(void, Uninitialize)() override
-    {
-        // Default implementation - derived classes can override for custom cleanup
     }
 };
 
@@ -492,22 +481,21 @@ public:
         try
         {
             // Phase 1: Construction - aggregate gets outer object pointer
-            auto obj = new TAggregateGeneric<_Base, _OuterGeneric>(pOuter, args...);
+            TGemPtr<_Base> obj = new TAggregateGeneric<_Base, _OuterGeneric>(pOuter, args...); // throw std::bad_alloc
             
             // Phase 2: Finalization (safe for any additional initialization)
-            auto result = obj->Initialize();
-            if (Failed(result))
-            {
-                obj->Release();
-                return result;
-            }
+            ThrowGemError(obj->Initialize()); // throw GemError
             
-            *ppObject = obj;
+            *ppObject = obj.Detach();
             return Result::Success;
         }
-        catch (...)
+        catch (const std::bad_alloc &)
         {
             return Result::OutOfMemory;
+        }
+        catch (const GemError &e)
+        {
+            return e.Result();
         }
     }
 
@@ -533,34 +521,23 @@ public:
         // Always delegate to outer object - it knows about both outer and inner interfaces
         return m_pOuterGeneric->QueryInterface(iid, ppObj);
     }
-
-    // Delegate lifecycle methods to outer object
-    GEMMETHOD(Initialize)() final
-    {
-        // Aggregated objects should not finalize independently
-        // Let the outer object control finalization
-        return Gem::Result::Success;
-    }
-
-    GEMMETHOD_(void, Uninitialize)() final
-    {
-        // Aggregated objects should not prepare for destruction independently
-        // The outer object will manage this
-    }
-
 };
 
 //------------------------------------------------------------------------------------------------
-// Custom interfaces must derive from CGenericBase
-class CGenericBase
+// Custom interfaces must derive from TGenericBase<_Xface>
+template<class _Xface>
+class TGenericBase : public _Xface
 {
 public:
-    virtual ~CGenericBase() = default;
+    virtual ~TGenericBase() = default;
     GEMMETHOD(InternalQueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppUnk)
     {
         *ppUnk = nullptr;
         return Gem::Result::NoInterface;
     }
+
+    GEMMETHOD(Initialize)() { return Gem::Result::Success; }
+    GEMMETHOD_(void, Uninitialize)() {}
 };
 
 }
