@@ -111,6 +111,8 @@ enum class Result : INT32
     NotImplemented = -7,
     Unavailable = -8,
     Uninitialized = -9,
+    PluginLoadFailed = -10,
+    PluginProcNodFound = -11,
 };
 
 //------------------------------------------------------------------------------------------------
