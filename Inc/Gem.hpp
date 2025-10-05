@@ -21,16 +21,14 @@
 #include <new>
 
 #ifdef _WIN32
-    #define GEMAPI __stdcall
     #define GEMNOTHROW __declspec(nothrow)
 #else
-    #define GEMAPI
     #define GEMNOTHROW
 #endif
 
 // Method declaration macros for COM-style interfaces
-#define GEMMETHOD(method) virtual GEMNOTHROW Gem::Result GEMAPI method
-#define GEMMETHOD_(retType, method) virtual GEMNOTHROW retType GEMAPI method
+#define GEMMETHOD(method) virtual GEMNOTHROW Gem::Result method
+#define GEMMETHOD_(retType, method) virtual GEMNOTHROW retType method
 
 // Implementation macros for concrete classes
 #define GEMMETHODIMP Gem::Result
@@ -413,7 +411,7 @@ public:
         return InternalRelease();
     }
 
-    ULONG GEMNOTHROW GEMAPI InternalAddRef()
+    ULONG GEMNOTHROW InternalAddRef()
     {
 #ifdef _WIN32
         return InterlockedIncrement(&m_RefCount);
@@ -422,7 +420,7 @@ public:
 #endif
     }
 
-    ULONG GEMNOTHROW GEMAPI InternalRelease()
+    ULONG GEMNOTHROW InternalRelease()
     {
 #ifdef _WIN32
         auto result = InterlockedDecrement(&m_RefCount);
