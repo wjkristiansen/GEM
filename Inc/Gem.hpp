@@ -484,12 +484,12 @@ public:
         try
         {
             // Phase 1: Construction - aggregate gets outer object pointer
-            TGemPtr<_Base> obj = new TAggregateImpl<_Base, _OuterGeneric>(pOuter, args...); // throw std::bad_alloc
+            auto obj = std::make_unique<TAggregateImpl<_Base, _OuterGeneric>>(pOuter, args...); // throw std::bad_alloc
             
             // Phase 2: Finalization (safe for any additional initialization)
             ThrowGemError(obj->Initialize()); // throw GemError
             
-            *ppObject = obj.Detach();
+            *ppObject = obj.release();
             return Result::Success;
         }
         catch (const std::bad_alloc &)
