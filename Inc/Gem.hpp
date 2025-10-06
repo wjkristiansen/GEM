@@ -35,7 +35,10 @@
 #define GEMMETHODIMP_(retType) retType
 
 // Interface ID declaration macro
-#define GEM_INTERFACE_DECLARE(iid) static constexpr Gem::InterfaceId IId{iid}
+#define GEM_INTERFACE_DECLARE(xface, iid) \
+    using XFace = xface; \
+    static constexpr char *XFaceName = #xface; \
+    static constexpr Gem::InterfaceId IId{iid}
 
 // Helper macro for QueryInterface calls with type safety
 #define GEM_IID_PPV_ARGS(ppObj) \
@@ -344,7 +347,7 @@ inline void ThrowGemError(Result result)
 // Base interface for all GEM interfaces
 struct XGeneric
 {
-    GEM_INTERFACE_DECLARE(0xffffffffffffffffU);
+    GEM_INTERFACE_DECLARE(XGeneric, 0xffffffffffffffffU);
 
     GEMMETHOD_(ULONG, AddRef)() = 0;
     GEMMETHOD_(ULONG, Release)() = 0;
