@@ -316,6 +316,93 @@ public:
     _Type *operator->() const { return m_p; }
 };
 
+
+//------------------------------------------------------------------------------------------------
+template<class _Type>
+class TAggregatePtr
+{
+    _Type *m_p = nullptr;
+
+public:
+    TAggregatePtr() = default;
+    TAggregatePtr(_Type *p) :
+        m_p(p)
+    {
+    }
+    TAggregatePtr(const TAggregatePtr &o) = delete;
+    TAggregatePtr(TAggregatePtr &&o) noexcept :
+        m_p(o.m_p)
+    {
+        o.m_p = nullptr;
+    }
+
+    ~TAggregatePtr()
+    {
+        if (m_p)
+        {
+            delete (m_p);
+        }
+    }
+
+    TAggregatePtr &Attach(_Type *p)
+    {
+        if (m_p)
+        {
+            m_p->Release();
+        }
+
+        m_p = p;
+
+        return *this;
+    }
+
+    _Type *Detach()
+    {
+        _Type *pOut = m_p;
+        m_p = nullptr;
+        return pOut;
+    }
+
+    TAggregatePtr &operator=(_Type *p)
+    {
+        if (m_p)
+        {
+            delete (m_p);
+        }
+
+        m_p = p;
+
+        return *this;
+    }
+
+    TAggregatePtr &operator=(const TAggregatePtr &o) = delete;
+
+    TAggregatePtr &operator=(TAggregatePtr &&o) noexcept
+    {
+        delete (m_p);
+        m_p = o.m_p;
+        o.m_p = nullptr;
+
+        return *this;
+    }
+
+    _Type **operator&()
+    {
+        return &m_p;
+    }
+
+    _Type &operator*() const
+    {
+        return *m_p;
+    }
+
+    _Type *Get() const { return m_p; }
+
+    operator _Type *() const { return m_p; }
+    
+    _Type *operator->() const { return m_p; }
+};
+
 //------------------------------------------------------------------------------------------------
 inline constexpr bool Failed(Gem::Result result) noexcept
 {
@@ -484,12 +571,12 @@ public:
         try
         {
             // Phase 1: Construction - aggregate gets outer object pointer
-            TGemPtr<_Base> obj = new TAggregateImpl<_Base, _OuterGeneric>(pOuter, args...); // throw std::bad_alloc
+            auto obj = std::make_unique<TAggregateImpl<_Base, _OuterGeneric>>(pOuter, args...); // throw std::bad_alloc
             
             // Phase 2: Finalization (safe for any additional initialization)
             ThrowGemError(obj->Initialize()); // throw GemError
             
-            *ppObject = obj.Detach();
+            *ppObject = obj.release();
             return Result::Success;
         }
         catch (const std::bad_alloc &)
