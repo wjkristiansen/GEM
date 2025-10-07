@@ -316,93 +316,6 @@ public:
     _Type *operator->() const { return m_p; }
 };
 
-
-//------------------------------------------------------------------------------------------------
-template<class _Type>
-class TAggregatePtr
-{
-    _Type *m_p = nullptr;
-
-public:
-    TAggregatePtr() = default;
-    TAggregatePtr(_Type *p) :
-        m_p(p)
-    {
-    }
-    TAggregatePtr(const TAggregatePtr &o) = delete;
-    TAggregatePtr(TAggregatePtr &&o) noexcept :
-        m_p(o.m_p)
-    {
-        o.m_p = nullptr;
-    }
-
-    ~TAggregatePtr()
-    {
-        if (m_p)
-        {
-            delete (m_p);
-        }
-    }
-
-    TAggregatePtr &Attach(_Type *p)
-    {
-        if (m_p)
-        {
-            m_p->Release();
-        }
-
-        m_p = p;
-
-        return *this;
-    }
-
-    _Type *Detach()
-    {
-        _Type *pOut = m_p;
-        m_p = nullptr;
-        return pOut;
-    }
-
-    TAggregatePtr &operator=(_Type *p)
-    {
-        if (m_p)
-        {
-            delete (m_p);
-        }
-
-        m_p = p;
-
-        return *this;
-    }
-
-    TAggregatePtr &operator=(const TAggregatePtr &o) = delete;
-
-    TAggregatePtr &operator=(TAggregatePtr &&o) noexcept
-    {
-        delete (m_p);
-        m_p = o.m_p;
-        o.m_p = nullptr;
-
-        return *this;
-    }
-
-    _Type **operator&()
-    {
-        return &m_p;
-    }
-
-    _Type &operator*() const
-    {
-        return *m_p;
-    }
-
-    _Type *Get() const { return m_p; }
-
-    operator _Type *() const { return m_p; }
-    
-    _Type *operator->() const { return m_p; }
-};
-
 //------------------------------------------------------------------------------------------------
 inline constexpr bool Failed(Gem::Result result) noexcept
 {
@@ -542,63 +455,28 @@ public:
 };
 
 //------------------------------------------------------------------------------------------------
-// Aggregated object for COM-like aggregation
-// The aggregated object delegates its XGeneric methods to the outer object but
-// implements its own interface-specific methods and QueryInterface logic
-template<class _Base, class _OuterGeneric>
-class TAggregateImpl :
-    public _Base
+template<class _Base, class _OuterClass>
+struct TAggregate : public _Base
 {
-    _OuterGeneric *m_pOuterGeneric;
+    _OuterClass *m_pOuter;
 
-public:
     template<typename... Arguments>
-    TAggregateImpl(_In_ _OuterGeneric *pOuterGeneric, Arguments... params) :
-        m_pOuterGeneric(pOuterGeneric),
-        _Base(params...)
+    TAggregate(_In_ _OuterClass *pOuter, Arguments... params) :
+        _Base(params...),
+        m_pOuter(pOuter)
     {
-    }
-
-    // Factory function for proper two-phase initialization of aggregated objects
-    template<typename... Args>
-    static Result Create(_Outptr_result_nullonfailure_ _Base **ppObject, _In_ _OuterGeneric *pOuter, Args... args)
-    {
-        if (!ppObject || !pOuter)
-            return Result::BadPointer;
-        
-        *ppObject = nullptr;
-        
-        try
-        {
-            // Phase 1: Construction - aggregate gets outer object pointer
-            auto obj = std::make_unique<TAggregateImpl<_Base, _OuterGeneric>>(pOuter, args...); // throw std::bad_alloc
-            
-            // Phase 2: Finalization (safe for any additional initialization)
-            ThrowGemError(obj->Initialize()); // throw GemError
-            
-            *ppObject = obj.release();
-            return Result::Success;
-        }
-        catch (const std::bad_alloc &)
-        {
-            return Result::OutOfMemory;
-        }
-        catch (const GemError &e)
-        {
-            return e.Result();
-        }
     }
 
     // Always delegate AddRef to outer generic for proper aggregation
     GEMMETHOD_(ULONG,AddRef)() final
     {
-        return m_pOuterGeneric->AddRef();
+        return m_pOuter->AddRef();
     }
 
     // Always delegate Release to outer generic for proper aggregation
     GEMMETHOD_(ULONG, Release)() final
     {
-        return m_pOuterGeneric->Release();
+        return m_pOuter->Release();
     }
     // Delegate ALL QueryInterface calls to outer object for proper COM aggregation identity
     GEMMETHOD(QueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) final
@@ -609,7 +487,7 @@ public:
         }
 
         // Always delegate to outer object - it knows about both outer and inner interfaces
-        return m_pOuterGeneric->QueryInterface(iid, ppObj);
+        return m_pOuter->QueryInterface(iid, ppObj);
     }
 };
 
