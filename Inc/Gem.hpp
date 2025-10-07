@@ -498,7 +498,7 @@ class TGeneric : public _Xface
 {
 public:
     virtual ~TGeneric() = default;
-    GEMMETHOD(InternalQueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppUnk)
+    GEMMETHOD(InternalQueryInterface)(Gem::InterfaceId /*iid*/, _Outptr_result_nullonfailure_ void **ppUnk)
     {
         *ppUnk = nullptr;
         return Gem::Result::NoInterface;
