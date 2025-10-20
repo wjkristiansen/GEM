@@ -353,10 +353,6 @@ struct XGeneric
     GEMMETHOD_(ULONG, Release)() = 0;
     GEMMETHOD(QueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) = 0;
 
-    // Lifecycle methods for proper two-phase initialization/destruction
-    GEMMETHOD(Initialize)() = 0;        // Called after construction is complete
-    GEMMETHOD_(void, Uninitialize)() = 0; // Called before destruction begins
-
     template<class _XFace>
     Gem::Result QueryInterface(_XFace **ppObj)
     {
@@ -374,6 +370,12 @@ public:
     template<typename... Arguments>
     TGenericImpl(Arguments&&... args) : _Base(args ...)
     {
+        this->Initialize();
+    }
+
+    virtual ~TGenericImpl()
+    {
+        _Base::Uninitialize();
     }
 
     // Factory function for proper two-phase initialization
@@ -388,11 +390,7 @@ public:
         try
         {
             // Phase 1: Construction
-            TGemPtr<_Base> obj = new TGenericImpl<_Base>(args...); // throw std::bad_alloc
-            
-            // Phase 2: Finalization (safe to create aggregates, etc.)
-            ThrowGemError(obj->Initialize()); // throw GemError
-            
+            TGemPtr<_Base> obj = new TGenericImpl<_Base>(args...); // throw std::bad_alloc            
             *ppObject = obj.Detach();
             return Result::Success;
         }
@@ -503,9 +501,6 @@ public:
         *ppUnk = nullptr;
         return Gem::Result::NoInterface;
     }
-
-    GEMMETHOD(Initialize)() { return Gem::Result::Success; }
-    GEMMETHOD_(void, Uninitialize)() {}
 };
 
 }
