@@ -434,7 +434,6 @@ public:
         if (0UL == result)
         {
             // Call lifecycle method before destruction - _Base must inherit from TGeneric
-            this->Uninitialize();
             delete(this);
         }
 
