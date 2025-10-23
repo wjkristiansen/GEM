@@ -375,7 +375,6 @@ public:
 
     virtual ~TGenericImpl()
     {
-        _Base::Uninitialize();
     }
 
     // Factory function for proper two-phase initialization
@@ -433,7 +432,7 @@ public:
 
         if (0UL == result)
         {
-            // Call lifecycle method before destruction - _Base must inherit from TGeneric
+            this->Uninitialize();
             delete(this);
         }
 
@@ -500,6 +499,8 @@ public:
         *ppUnk = nullptr;
         return Gem::Result::NoInterface;
     }
+
+    virtual void Uninitialize() {}
 };
 
 }
