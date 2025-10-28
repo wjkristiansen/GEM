@@ -37,7 +37,7 @@
 // Interface ID declaration macro
 #define GEM_INTERFACE_DECLARE(xface, iid) \
     using XFace = xface; \
-    static constexpr char *XFaceName = #xface; \
+    static inline const char *XFaceName = #xface; \
     static constexpr Gem::InterfaceId IId{iid}
 
 // Helper macro for QueryInterface calls with type safety
