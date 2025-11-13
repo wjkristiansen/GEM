@@ -130,7 +130,7 @@ inline PCSTR GemResultString(Result res)
     case Gem::Result::Fail:
         return "Fail";
     case Gem::Result::InvalidArg:
-        return "IncalidArg";
+        return "InvalidArg";
     case Gem::Result::NotFound:
         return "NotFound";
     case Gem::Result::OutOfMemory:
