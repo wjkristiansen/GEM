@@ -89,19 +89,19 @@ namespace Gem
 // 64-bit interface identifier
 struct InterfaceId
 {
-	const UINT64 Value;
+	const uint64_t Value;
 	InterfaceId() = default;
 	constexpr InterfaceId(const InterfaceId& o) = default;
-	constexpr InterfaceId(UINT64 i) :
+	constexpr InterfaceId(uint64_t i) :
 		Value(i) {}
 	constexpr bool operator==(const InterfaceId& o) const { return Value == o.Value; }
-	constexpr bool operator==(UINT64 v) const { return Value == v; }
-	constexpr operator UINT64() const { return Value; }
+	constexpr bool operator==(uint64_t v) const { return Value == v; }
+	constexpr operator uint64_t() const { return Value; }
 };
 
 //------------------------------------------------------------------------------------------------
 _Return_type_success_(return >= 0)
-enum class Result : INT32
+enum class Result : int32_t
 {
     Success = 0,
     End = 1,
@@ -119,7 +119,7 @@ enum class Result : INT32
 };
 
 //------------------------------------------------------------------------------------------------
-inline PCSTR GemResultString(Result res)
+inline const char * GemResultString(Result res)
 {
     switch (res)
     {
@@ -319,8 +319,8 @@ struct XGeneric
 {
     GEM_INTERFACE_DECLARE(XGeneric, 0xffffffffffffffffU);
 
-    GEMMETHOD_(ULONG, AddRef)() = 0;
-    GEMMETHOD_(ULONG, Release)() = 0;
+    GEMMETHOD_(unsigned long, AddRef)() = 0;
+    GEMMETHOD_(unsigned long, Release)() = 0;
     GEMMETHOD(QueryInterface)(Gem::InterfaceId iid, _Outptr_result_nullonfailure_ void **ppObj) = 0;
 
     template<class _XFace>
@@ -334,7 +334,7 @@ struct XGeneric
 template<class _Base>
 class TGenericImpl : public _Base
 {
-    ULONG m_RefCount = 0;
+    unsigned long m_RefCount = 0;
 
 public:
     template<typename... Arguments>
@@ -373,17 +373,17 @@ public:
         }
     }
 
-    GEMMETHOD_(ULONG,AddRef)() final
+    GEMMETHOD_(unsigned long,AddRef)() final
     {
         return InternalAddRef();
     }
 
-    GEMMETHOD_(ULONG, Release)() final
+    GEMMETHOD_(unsigned long, Release)() final
     {
         return InternalRelease();
     }
 
-    ULONG GEMNOTHROW InternalAddRef()
+    unsigned long GEMNOTHROW InternalAddRef()
     {
 #ifdef _WIN32
         return InterlockedIncrement(&m_RefCount);
@@ -392,7 +392,7 @@ public:
 #endif
     }
 
-    ULONG GEMNOTHROW InternalRelease()
+    unsigned long GEMNOTHROW InternalRelease()
     {
 #ifdef _WIN32
         auto result = InterlockedDecrement(&m_RefCount);
@@ -434,13 +434,13 @@ struct TAggregate : public _Base
     }
 
     // Always delegate AddRef to outer generic for proper aggregation
-    GEMMETHOD_(ULONG,AddRef)() final
+    GEMMETHOD_(unsigned long,AddRef)() final
     {
         return m_pOuter->AddRef();
     }
 
     // Always delegate Release to outer generic for proper aggregation
-    GEMMETHOD_(ULONG, Release)() final
+    GEMMETHOD_(unsigned long, Release)() final
     {
         return m_pOuter->Release();
     }
