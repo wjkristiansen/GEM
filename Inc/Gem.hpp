@@ -231,39 +231,25 @@ public:
 
     TGemPtr &operator=(const TGemPtr &o)
     {
-        auto temp = m_p;
+        if(m_p)
+        {
+            m_p->Release();
+        }
 
         m_p = o.m_p;
-
-        if (temp != m_p)
-        {
-            if (m_p)
-            {
-                m_p->AddRef();
-            }
-
-            if (temp)
-            {
-                temp->Release();
-            }
-        }
+        m_p->AddRef();
 
         return *this;
     }
 
     TGemPtr &operator=(TGemPtr &&o) noexcept
     {
-        if (m_p != o.m_p)
+        if (m_p)
         {
-            auto temp = m_p;
-
-            m_p = o.m_p;
-
-            if (temp)
-            {
-                temp->Release();
-            }
+            m_p->Release();
         }
+
+        m_p = o.m_p;
         o.m_p = nullptr;
 
         return *this;
