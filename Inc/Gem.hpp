@@ -1,5 +1,5 @@
 //================================================================================================
-// Generic Interface Manager (GEM) - Portable COM-like Interface System
+// GeM (Generic Model) - Portable COM-like Interface System
 //
 // This header provides a portable, cross-platform interface system inspired by COM:
 // - Reference counting through AddRef/Release
