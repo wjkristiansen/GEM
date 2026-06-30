@@ -116,6 +116,7 @@ enum class Result : int32_t
     Uninitialized = -9,
     PluginLoadFailed = -10,
     PluginProcNotFound = -11,
+    CorruptedData = -12,
 };
 
 //------------------------------------------------------------------------------------------------
