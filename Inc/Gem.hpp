@@ -117,6 +117,10 @@ enum class Result : int32_t
     PluginLoadFailed = -10,
     PluginProcNotFound = -11,
     CorruptedData = -12,
+    AlreadyExists = -13,
+    OutOfRange = -14,
+    IoError = -15,
+    NotOpen = -16,
 };
 
 //------------------------------------------------------------------------------------------------
@@ -146,6 +150,20 @@ inline const char * GemResultString(Result res)
         return "Unavailable";
     case Gem::Result::Uninitialized:
         return "Uninitialized";
+    case Gem::Result::PluginLoadFailed:
+        return "PluginLoadFailed";
+    case Gem::Result::PluginProcNotFound:
+        return "PluginProcNotFound";
+    case Gem::Result::CorruptedData:
+        return "CorruptedData";
+    case Gem::Result::AlreadyExists:
+        return "AlreadyExists";
+    case Gem::Result::OutOfRange:
+        return "OutOfRange";
+    case Gem::Result::IoError:
+        return "IoError";
+    case Gem::Result::NotOpen:
+        return "NotOpen";
     }
     return "(Unknown)";
 }
