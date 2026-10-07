@@ -157,6 +157,7 @@ The `Create` factory:
 - Allocates the object (`std::bad_alloc` -> `Result::OutOfMemory`)
 - Calls the constructor, then `Initialize()`
 - Converts any thrown `GemError` to the corresponding `Result`
+- Converts any other exception to `Result::Fail`
 
 ### 3. Query for Other Interfaces
 
@@ -195,6 +196,8 @@ Gem::ThrowGemError(result);  // throws GemError if Failed(result)
 ```
 
 `Create` catches `GemError` and returns the contained `Result`, keeping error handling exception-free for callers.
+
+Implementation constructors and `Initialize()` should report failure only by throwing `GemError` or by letting `std::bad_alloc` propagate. `Create` also catches every other exception, so none escapes into a caller's `GEMNOTHROW` method, but it can only report those as `Result::Fail` and the specific cause is lost. Catch library or custom exceptions inside the implementation and rethrow them as a `GemError` with a meaningful `Result`.
 
 ## Why `X` Instead of `I`?
 

@@ -21,6 +21,10 @@
 #include <cstdint>
 #include <new>
 
+#ifdef _MSC_VER
+    #include <intrin.h>
+#endif
+
 #ifdef _WIN32
     #define GEMNOTHROW __declspec(nothrow)
 #else
@@ -337,6 +341,31 @@ struct XGeneric
 };
 
 //------------------------------------------------------------------------------------------------
+// Reference count atomics. These use compiler intrinsics rather than std::atomic so that Gem.hpp
+// stays free of standard library types and of <windows.h>.
+inline unsigned long AtomicIncrement(unsigned long *pValue)
+{
+#ifdef _MSC_VER
+    static_assert(sizeof(unsigned long) == sizeof(long), "_InterlockedIncrement operates on long");
+    return static_cast<unsigned long>(_InterlockedIncrement(reinterpret_cast<long *>(pValue)));
+#else
+    // Taking a new reference requires an existing one, so no ordering is needed.
+    return __atomic_add_fetch(pValue, 1UL, __ATOMIC_RELAXED);
+#endif
+}
+
+inline unsigned long AtomicDecrement(unsigned long *pValue)
+{
+#ifdef _MSC_VER
+    return static_cast<unsigned long>(_InterlockedDecrement(reinterpret_cast<long *>(pValue)));
+#else
+    // Release orders this thread's writes before the decrement; acquire makes every other
+    // thread's writes visible to the thread that destroys the object.
+    return __atomic_sub_fetch(pValue, 1UL, __ATOMIC_ACQ_REL);
+#endif
+}
+
+//------------------------------------------------------------------------------------------------
 template<class _Base>
 class TGenericImpl : public _Base
 {
@@ -353,7 +382,10 @@ public:
     {
     }
 
-    // Factory function for proper two-phase initialization
+    // Factory function for proper two-phase initialization.
+    // Constructors and Initialize() should report failure by throwing GemError (see
+    // ThrowGemError) or by letting std::bad_alloc propagate. Any other exception is
+    // caught here and reported as Result::Fail, losing the specific cause.
     template<typename... Args>
     static Result Create(_Outptr_result_nullonfailure_ _Base **ppObject, Args... args)
     {
@@ -377,6 +409,10 @@ public:
         {
             return e.Result();
         }
+        catch (...)
+        {
+            return Result::Fail;
+        }
     }
 
     GEMMETHOD_(unsigned long,AddRef)() final
@@ -391,20 +427,12 @@ public:
 
     unsigned long GEMNOTHROW InternalAddRef()
     {
-#ifdef _WIN32
-        return InterlockedIncrement(&m_RefCount);
-#else
-        return ++m_RefCount;  // Note: This is not thread-safe on non-Windows. Consider using std::atomic for true portability.
-#endif
+        return AtomicIncrement(&m_RefCount);
     }
 
     unsigned long GEMNOTHROW InternalRelease()
     {
-#ifdef _WIN32
-        auto result = InterlockedDecrement(&m_RefCount);
-#else
-        auto result = --m_RefCount;  // Note: This is not thread-safe on non-Windows. Consider using std::atomic for true portability.
-#endif
+        auto result = AtomicDecrement(&m_RefCount);
 
         if (0UL == result)
         {
