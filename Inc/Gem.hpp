@@ -433,7 +433,7 @@ struct TAggregate : public _Base
     _OuterClass *m_pOuter;
 
     template<typename... Arguments>
-    TAggregate(_In_ _OuterClass *pOuter, Arguments... params) :
+    TAggregate(_OuterClass *pOuter, Arguments... params) :
         _Base(params...),
         m_pOuter(pOuter)
     {
