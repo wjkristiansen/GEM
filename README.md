@@ -25,6 +25,20 @@ GeM brings COM's proven interface-based design to cross-platform C++. The mappin
 
 Unlike COM, which targets C compatibility, GeM is C++-only and leverages templates (`TGeneric<T>`, `TGenericImpl<T>`, `TGemPtr<T>`, `TAggregate<T,U>`) to reduce the boilerplate typically associated with implementing COM-style interfaces.
 
+## ABI Contract
+
+GeM interfaces are meant to cross binary boundaries (DLLs and shared libraries). Because GeM is header-only, every binary compiles its own copy of `Gem.hpp`, and binaries built against different GeM revisions must still interoperate. The following elements form that binary contract. Editors of GeM must not change them incompatibly:
+
+- **`XGeneric`'s vtable**: `AddRef`, `Release`, and `QueryInterface`, in that order, with their current signatures. Never add, remove, or reorder `XGeneric`'s virtual methods.
+- **`GEMMETHOD` / `GEMMETHOD_`**: they expand to a plain `virtual` method with the default calling convention. Do not add a calling-convention specifier or anything else that changes how a method is called. Interface methods never throw (`GEMNOTHROW`); failures cross the boundary only as a `Gem::Result`.
+- **`Gem::InterfaceId`**: a trivially copyable wrapper around a single `uint64_t`, passed by value. Do not change its size, its members, or its trivial copyability.
+- **`Gem::Result`**: a scoped enum with underlying type `int32_t`, where success codes are `>= 0` and failure codes are `< 0`. Every assigned value is permanent. A new code takes the next unused value, and existing codes are never renumbered, reused, or removed. A binary built against an older revision still classifies an unfamiliar code correctly by its sign.
+- **`Gem::TGemPtr<T>`**: its layout is a single interface pointer, and it may appear by value in structs passed across interfaces. Do not add data members, virtual methods, or a base class.
+
+Everything else is compiled into each binary and never crosses a boundary, so it may change freely. That covers the inline helpers, the implementation templates (`TGeneric`, `TGenericImpl`, `TAggregate`), the interface-map macros, and `GemError`.
+
+If an incompatible change to the contract is ever unavoidable, every binary that exchanges GeM interfaces must be rebuilt against the new revision at the same time.
+
 ## Integration
 
 GeM is a header-only library. Simply `#include` it in your source.
@@ -79,6 +93,14 @@ struct XMyInterface : public Gem::XGeneric {
 | `Uninitialized`      |    -9 | Object not initialized     |
 | `PluginLoadFailed`   |   -10 | Plugin DLL load error      |
 | `PluginProcNotFound` |   -11 | Plugin entry-point missing |
+| `CorruptedData`      |   -12 | Data is malformed          |
+| `AlreadyExists`      |   -13 | Item already exists        |
+| `OutOfRange`         |   -14 | Value or index out of range |
+| `IoError`            |   -15 | I/O operation failed       |
+| `NotOpen`            |   -16 | Object is not open         |
+| `DataNotRecognized`  |   -17 | Data format not recognized |
+
+Values are permanent; see [ABI Contract](#abi-contract).
 
 Use the free-function helpers to test results:
 
