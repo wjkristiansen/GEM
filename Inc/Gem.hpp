@@ -18,6 +18,10 @@
 
 #pragma once
 
+#if defined(_MSVC_LANG) ? _MSVC_LANG < 202002L : __cplusplus < 202002L
+    #error GeM requires C++20 or later
+#endif
+
 #include <cstdint>
 #include <new>
 

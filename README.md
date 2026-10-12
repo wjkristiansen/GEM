@@ -41,7 +41,7 @@ If an incompatible change to the contract is ever unavoidable, every binary that
 
 ## Integration
 
-GeM is a header-only library. Simply `#include` it in your source.
+GeM is a header-only library that requires C++20 or later. Simply `#include` it in your source.
 
 ```cpp
 #include <Gem.hpp>
