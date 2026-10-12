@@ -126,6 +126,7 @@ enum class Result : int32_t
     OutOfRange = -14,
     IoError = -15,
     NotOpen = -16,
+    DataNotRecognized = -17,
 };
 
 //------------------------------------------------------------------------------------------------
@@ -169,6 +170,8 @@ inline const char * GemResultString(Result res)
         return "IoError";
     case Gem::Result::NotOpen:
         return "NotOpen";
+    case Gem::Result::DataNotRecognized:
+        return "DataNotRecognized";
     }
     return "(Unknown)";
 }
